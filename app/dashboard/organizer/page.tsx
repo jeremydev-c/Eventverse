@@ -107,45 +107,53 @@ export default function OrganizerDashboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Stats Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <Card className="bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-premium-lg shadow-primary-500/40 hover:shadow-glow-xl hover:shadow-primary-500/60 transition-all duration-500 hover:scale-110 animate-scale-in-bounce card-hover shine" style={{ animationDelay: '0ms' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-primary-100 text-sm mb-2 font-bold">Total Events</p>
-                <p className="text-4xl font-extrabold text-shadow-lg">{stats.totalEvents}</p>
+          <div className="animate-scale-in-bounce" style={{ animationDelay: '0ms' }}>
+            <Card className="bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-premium-lg shadow-primary-500/40 hover:shadow-glow-xl hover:shadow-primary-500/60 transition-all duration-500 hover:scale-110 card-hover shine">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-primary-100 text-sm mb-2 font-bold">Total Events</p>
+                  <p className="text-4xl font-extrabold text-shadow-lg">{stats.totalEvents}</p>
+                </div>
+                <Calendar className="w-14 h-14 opacity-70 animate-float-slow" />
               </div>
-              <Calendar className="w-14 h-14 opacity-70 animate-float-slow" />
-            </div>
-          </Card>
+            </Card>
+          </div>
 
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-premium-lg shadow-green-500/40 hover:shadow-glow-xl hover:shadow-green-500/60 transition-all duration-500 hover:scale-110 animate-scale-in-bounce card-hover shine" style={{ animationDelay: '100ms' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm mb-2 font-bold">Total Revenue</p>
-                <p className="text-4xl font-extrabold text-shadow-lg">${stats.totalRevenue.toFixed(2)}</p>
+          <div className="animate-scale-in-bounce" style={{ animationDelay: '100ms' }}>
+            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-premium-lg shadow-green-500/40 hover:shadow-glow-xl hover:shadow-green-500/60 transition-all duration-500 hover:scale-110 card-hover shine">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm mb-2 font-bold">Total Revenue</p>
+                  <p className="text-4xl font-extrabold text-shadow-lg">${stats.totalRevenue.toFixed(2)}</p>
+                </div>
+                <DollarSign className="w-14 h-14 opacity-70 animate-float-slow" />
               </div>
-              <DollarSign className="w-14 h-14 opacity-70 animate-float-slow" />
-            </div>
-          </Card>
+            </Card>
+          </div>
 
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-premium-lg shadow-purple-500/40 hover:shadow-glow-xl hover:shadow-purple-500/60 transition-all duration-500 hover:scale-110 animate-scale-in-bounce card-hover shine" style={{ animationDelay: '200ms' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm mb-2 font-bold">Tickets Sold</p>
-                <p className="text-4xl font-extrabold text-shadow-lg">{stats.totalTickets}</p>
+          <div className="animate-scale-in-bounce" style={{ animationDelay: '200ms' }}>
+            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-premium-lg shadow-purple-500/40 hover:shadow-glow-xl hover:shadow-purple-500/60 transition-all duration-500 hover:scale-110 card-hover shine">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm mb-2 font-bold">Tickets Sold</p>
+                  <p className="text-4xl font-extrabold text-shadow-lg">{stats.totalTickets}</p>
+                </div>
+                <Ticket className="w-14 h-14 opacity-70 animate-float-slow" />
               </div>
-              <Ticket className="w-14 h-14 opacity-70 animate-float-slow" />
-            </div>
-          </Card>
+            </Card>
+          </div>
 
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-premium-lg shadow-orange-500/40 hover:shadow-glow-xl hover:shadow-orange-500/60 transition-all duration-500 hover:scale-110 animate-scale-in-bounce card-hover shine" style={{ animationDelay: '300ms' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm mb-2 font-bold">Upcoming</p>
-                <p className="text-4xl font-extrabold text-shadow-lg">{stats.upcomingEvents}</p>
+          <div className="animate-scale-in-bounce" style={{ animationDelay: '300ms' }}>
+            <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-premium-lg shadow-orange-500/40 hover:shadow-glow-xl hover:shadow-orange-500/60 transition-all duration-500 hover:scale-110 card-hover shine">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm mb-2 font-bold">Upcoming</p>
+                  <p className="text-4xl font-extrabold text-shadow-lg">{stats.upcomingEvents}</p>
+                </div>
+                <TrendingUp className="w-14 h-14 opacity-70 animate-float-slow" />
               </div>
-              <TrendingUp className="w-14 h-14 opacity-70 animate-float-slow" />
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
 
         {/* Events List */}
