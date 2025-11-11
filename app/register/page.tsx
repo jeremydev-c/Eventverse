@@ -168,7 +168,7 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   )
