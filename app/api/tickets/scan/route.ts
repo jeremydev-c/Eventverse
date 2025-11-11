@@ -34,6 +34,16 @@ export async function POST(request: NextRequest) {
         const ticketId = ticketIdMatch[1]
         ticket = await prisma.ticket.findUnique({
           where: { id: ticketId },
+          include: {
+            event: true,
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+            checkIn: true,
+          },
         })
       }
     } else {
@@ -62,22 +72,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // If ticket found by URL, fetch full details
-    if (ticket && !ticket.event) {
-      ticket = await prisma.ticket.findUnique({
-        where: { id: ticket.id },
-        include: {
-          event: true,
-          user: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-          checkIn: true,
-        },
-      })
-    }
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
