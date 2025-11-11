@@ -15,6 +15,7 @@ export async function GET(
       where: { id: ticketId },
       select: {
         id: true,
+        userId: true,
         status: true,
         price: true,
         quantity: true,
