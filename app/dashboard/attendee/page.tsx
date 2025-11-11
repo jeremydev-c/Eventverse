@@ -185,7 +185,8 @@ export default function AttendeeDashboard() {
             <h2 className="text-3xl font-extrabold text-gray-900 mb-6">Upcoming Events</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {upcomingTickets.map((ticket, index) => (
-                <Card key={ticket.id} variant="elevated" className="hover:shadow-glow transition-all duration-300 hover-lift animate-fade-in-up group" style={{ animationDelay: `${index * 100}ms` }}>
+                <div key={ticket.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+                  <Card variant="elevated" className="hover:shadow-glow transition-all duration-300 hover-lift group">
                   {ticket.event.imageUrl && (
                     <div className="relative overflow-hidden rounded-t-2xl -mx-6 -mt-6 mb-4">
                       <img
@@ -302,6 +303,7 @@ export default function AttendeeDashboard() {
                     </div>
                   </div>
                 </Card>
+                </div>
               ))}
             </div>
           </div>
