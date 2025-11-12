@@ -1,11 +1,34 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set')
+// Lazy initialization to avoid errors during build time
+let stripeInstance: Stripe | null = null
+
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) {
+      // During build (when NEXT_PHASE is 'phase-production-build'), use dummy key
+      // This allows the build to complete, but will fail at runtime if env var is missing
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        stripeInstance = new Stripe('sk_test_dummy_key_for_build', {
+          apiVersion: '2025-02-24.acacia',
+        })
+      } else {
+        throw new Error('STRIPE_SECRET_KEY is not set')
+      }
+    } else {
+      stripeInstance = new Stripe(secretKey, {
+        apiVersion: '2025-02-24.acacia',
+      })
+    }
+  }
+  return stripeInstance
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    return getStripe()[prop as keyof Stripe]
+  },
 })
 
 export async function createCheckoutSession(
