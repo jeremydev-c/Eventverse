@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
-import { createCheckoutSession } from '@/lib/stripe'
 import { z } from 'zod'
 
 const checkoutSchema = z.object({
@@ -60,6 +59,9 @@ export async function POST(request: NextRequest) {
     const baseUrl = envUrl || 'http://localhost:3000'
     const successUrl = `${baseUrl}/tickets/success?session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${baseUrl}/tickets/cancel`
+
+    // Lazy import to avoid build-time evaluation
+    const { createCheckoutSession } = await import('@/lib/stripe')
 
     const session = await createCheckoutSession(
       ticketIds,

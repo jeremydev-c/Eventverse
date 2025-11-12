@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
 import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
+  // Lazy import to avoid build-time evaluation
+  const { stripe } = await import('@/lib/stripe')
   try {
     const user = await getCurrentUser()
     if (!user) {

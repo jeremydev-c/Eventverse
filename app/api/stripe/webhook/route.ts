@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
 
 export async function POST(request: NextRequest) {
+  // Lazy import to avoid build-time evaluation
+  const { stripe } = await import('@/lib/stripe')
+  
   const body = await request.text()
   const headersList = await headers()
   const signature = headersList.get('stripe-signature')
