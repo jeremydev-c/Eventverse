@@ -11,16 +11,11 @@ export async function generateQRCode(data: string): Promise<string> {
     // Using larger size and better error correction for maximum compatibility
     const qrCodeDataUrl = await QRCode.toDataURL(data, {
       errorCorrectionLevel: 'M', // Medium error correction (better for scanning apps)
-      type: 'image/png',
-      quality: 1.0, // Maximum quality
       margin: 2, // Standard margin (too large can confuse some scanners)
       width: 1000, // Much larger size for better scanning
       color: {
         dark: '#000000', // Pure black
         light: '#FFFFFF', // Pure white
-      },
-      rendererOpts: {
-        quality: 1.0,
       },
     })
     return qrCodeDataUrl
