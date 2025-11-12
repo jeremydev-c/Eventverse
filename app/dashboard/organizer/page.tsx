@@ -170,8 +170,9 @@ export default function OrganizerDashboard() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event, index) => (
-              <Card key={event.id} variant="elevated" className="hover:shadow-glow transition-all duration-300 cursor-pointer hover-lift animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                <Link href={`/events/${event.id}/manage`}>
+              <div key={event.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+                <Card variant="elevated" className="hover:shadow-glow transition-all duration-300 cursor-pointer hover-lift">
+                  <Link href={`/events/${event.id}/manage`}>
                   <div>
                     <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">{event.title}</h3>
                     <div className="space-y-2 text-sm text-gray-600 mb-4">
@@ -199,6 +200,7 @@ export default function OrganizerDashboard() {
                   </div>
                 </Link>
               </Card>
+              </div>
             ))}
           </div>
 
