@@ -94,8 +94,9 @@ export default function EventsPage() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {events.map((event, index) => (
-            <Link key={event.id} href={`/events/${event.id}`}>
-              <Card variant="elevated" className="hover:shadow-glow-xl transition-all duration-700 cursor-pointer h-full hover-lift group animate-fade-in-up shine premium-border" style={{ animationDelay: `${index * 50}ms` }}>
+            <div key={event.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+              <Link href={`/events/${event.id}`}>
+                <Card variant="elevated" className="hover:shadow-glow-xl transition-all duration-700 cursor-pointer h-full hover-lift group shine premium-border">
                 {event.imageUrl && (
                   <div className="relative overflow-hidden rounded-xl mb-4 -mx-6 -mt-6">
                     <img
@@ -135,7 +136,8 @@ export default function EventsPage() {
                   </div>
                 </div>
               </Card>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
 
