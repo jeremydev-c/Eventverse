@@ -128,7 +128,7 @@ export default function ScannerPage() {
 
     // For a production app, you'd use a proper QR code library like jsQR
     // This is a simplified version
-    toast.info('QR scanning requires a library. Use manual input for now.')
+    toast('QR scanning requires a library. Use manual input for now.')
   }
 
   return (
