@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 
+// Force dynamic rendering - this route uses cookies and searchParams
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
   // Lazy import to avoid build-time evaluation
   const { stripe } = await import('@/lib/stripe')

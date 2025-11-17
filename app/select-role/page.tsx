@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Calendar, Users, ArrowRight, Chrome } from 'lucide-react'
 
-export default function SelectRolePage() {
+function SelectRoleForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedRole, setSelectedRole] = useState<'ORGANIZER' | 'ATTENDEE' | null>(null)
@@ -169,6 +169,18 @@ export default function SelectRolePage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function SelectRolePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-primary-950 via-primary-900 to-primary-800 flex items-center justify-center">
+        <div className="text-xl text-white">Loading...</div>
+      </div>
+    }>
+      <SelectRoleForm />
+    </Suspense>
   )
 }
 

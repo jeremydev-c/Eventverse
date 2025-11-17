@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { generateToken } from '@/lib/auth'
 
+// Force dynamic rendering - this route uses searchParams and cookies
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // Helper function to get the correct base URL for redirects (avoids 0.0.0.0 issues)
 function getRedirectBaseUrl(requestUrl: URL): string {
   const hostname = requestUrl.hostname

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
@@ -31,7 +31,7 @@ interface TicketData {
   }
 }
 
-export default function TicketSuccessPage() {
+function TicketSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams.get('session_id')
@@ -231,6 +231,18 @@ export default function TicketSuccessPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function TicketSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading...</div>
+      </div>
+    }>
+      <TicketSuccessContent />
+    </Suspense>
   )
 }
 
