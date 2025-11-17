@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
 
+// Force dynamic rendering - this route should never be statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   // Lazy import to avoid build-time evaluation
   const { stripe } = await import('@/lib/stripe')

@@ -6,15 +6,22 @@ let stripeInstance: Stripe | null = null
 function getStripe(): Stripe {
   if (!stripeInstance) {
     const secretKey = process.env.STRIPE_SECRET_KEY
+    
     if (!secretKey) {
-      // During build (when NEXT_PHASE is 'phase-production-build'), use dummy key
-      // This allows the build to complete, but will fail at runtime if env var is missing
-      if (process.env.NEXT_PHASE === 'phase-production-build') {
-        stripeInstance = new Stripe('sk_test_dummy_key_for_build', {
+      // During build phase, Next.js collects page data and may not have env vars
+      // Use a dummy key to allow build to complete
+      // At runtime, Vercel will have env vars available, so this should only happen during build
+      const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+      
+      if (isBuildPhase) {
+        // Build phase - use dummy key to prevent build errors
+        // Runtime will have access to actual env vars
+        stripeInstance = new Stripe('sk_test_dummy_for_build_only', {
           apiVersion: '2025-02-24.acacia',
         })
       } else {
-        throw new Error('STRIPE_SECRET_KEY is not set')
+        // Runtime without key - throw error (shouldn't happen if env vars are configured)
+        throw new Error('STRIPE_SECRET_KEY is not set. Please configure it in your environment variables.')
       }
     } else {
       stripeInstance = new Stripe(secretKey, {
@@ -25,9 +32,22 @@ function getStripe(): Stripe {
   return stripeInstance
 }
 
+// Export a function that returns stripe instance instead of creating Proxy at module load
+export function getStripeInstance(): Stripe {
+  return getStripe()
+}
+
+// Create a lazy proxy that only initializes when accessed
 export const stripe = new Proxy({} as Stripe, {
   get(_target, prop) {
-    return getStripe()[prop as keyof Stripe]
+    // Only initialize when actually accessed, not at module load
+    const instance = getStripe()
+    const value = instance[prop as keyof Stripe]
+    // If it's a function, bind it to the instance
+    if (typeof value === 'function') {
+      return value.bind(instance)
+    }
+    return value
   },
 })
 
