@@ -209,7 +209,7 @@ export default function EventDetailPage() {
     }
     setMpesaProcessing(false)
     setCheckoutRequestId(null)
-    toast.info('Payment cancelled. You can try again.')
+    toast('Payment cancelled. You can try again.', { icon: 'ℹ️' })
   }
 
   const pollMpesaStatus = async (requestId: string) => {

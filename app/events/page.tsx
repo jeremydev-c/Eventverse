@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Calendar, MapPin, DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
-import { FixedSizeGrid as Grid } from 'react-window'
 import { AdvancedSearch } from '@/components/events/AdvancedSearch'
 
 interface Event {
@@ -197,22 +196,12 @@ export default function EventsPage() {
           onFiltersChange={setSearchFilters}
         />
 
-        {/* Virtual Scrolling Grid for Performance - Only for large lists */}
-        {events.length > 20 ? (
-          <div ref={containerRef} className="w-full" style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}>
-            <VirtualizedEventGrid
-              events={events}
-              columnCount={columnCount}
-              containerWidth={containerRef.current?.clientWidth || 1200}
-            />
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {events.map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
-            ))}
-          </div>
-        )}
+        {/* Regular Grid - Virtual scrolling disabled for build compatibility */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {events.map((event, index) => (
+            <EventCard key={event.id} event={event} index={index} />
+          ))}
+        </div>
 
         {events.length === 0 && (
           <Card variant="elevated" className="text-center py-16 animate-fade-in-up">
@@ -315,7 +304,7 @@ const VirtualizedEventGrid = memo(({ events, columnCount, containerWidth }: Virt
 
   return (
     <div style={{ width: '100%', height: gridHeight }}>
-      <Grid
+      <FixedSizeGrid
         columnCount={columnCount}
         columnWidth={CARD_WIDTH + CARD_GAP}
         height={gridHeight}
@@ -325,7 +314,7 @@ const VirtualizedEventGrid = memo(({ events, columnCount, containerWidth }: Virt
         style={{ margin: '0 auto' }}
       >
         {Cell}
-      </Grid>
+      </FixedSizeGrid>
     </div>
   )
 })
