@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 
 const checkoutSchema = z.object({
@@ -9,19 +8,13 @@ const checkoutSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { ticketIds } = checkoutSchema.parse(body)
 
-    // Verify tickets belong to user and are pending
+    // Verify tickets exist and are pending (no auth required)
     const tickets = await prisma.ticket.findMany({
       where: {
         id: { in: ticketIds },
-        userId: user.id,
         status: 'PENDING',
       },
       include: {
@@ -63,10 +56,19 @@ export async function POST(request: NextRequest) {
     // Lazy import to avoid build-time evaluation
     const { createCheckoutSession } = await import('@/lib/stripe')
 
+    // Get userId from first ticket (all tickets should have same userId)
+    const userId = tickets[0]?.userId
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid ticket data' },
+        { status: 400 }
+      )
+    }
+
     const session = await createCheckoutSession(
       ticketIds,
       eventId,
-      user.id,
+      userId,
       successUrl,
       cancelUrl,
       tickets.map((t: { id: string; price: number; event: { title: string } }) => ({

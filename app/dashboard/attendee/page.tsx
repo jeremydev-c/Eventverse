@@ -61,7 +61,11 @@ export default function AttendeeDashboard() {
 
   const fetchTickets = async () => {
     try {
-      const res = await fetch('/api/tickets/my')
+      // Get userId from localStorage (stored when tickets are created)
+      const userId = localStorage.getItem('eventverse_userId')
+      const url = userId ? `/api/tickets/my?userId=${userId}` : '/api/tickets/my'
+      
+      const res = await fetch(url)
       const data = await res.json()
       if (res.ok) {
         setTickets(data.tickets || [])

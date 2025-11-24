@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   // Lazy import to avoid build-time evaluation
   const { stripe } = await import('@/lib/stripe')
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json().catch(() => ({}))
+    const userId = body.userId // Optional userId filter
+
+    // Find all PENDING tickets with Stripe session IDs (optionally filtered by userId)
+    const whereClause: any = {
+      status: 'PENDING',
+      stripeSessionId: { not: null },
+    }
+    if (userId) {
+      whereClause.userId = userId
     }
 
-    // Find all PENDING tickets with Stripe session IDs
     const pendingTickets = await prisma.ticket.findMany({
-      where: {
-        userId: user.id,
-        status: 'PENDING',
-        stripeSessionId: { not: null },
-      },
+      where: whereClause,
       select: {
         id: true,
         stripeSessionId: true,

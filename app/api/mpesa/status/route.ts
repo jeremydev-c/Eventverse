@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
 import { querySTKPushStatus } from '@/lib/mpesa'
 import { z } from 'zod'
 
@@ -10,19 +9,13 @@ const statusSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { checkoutRequestId } = statusSchema.parse(body)
 
-    // Verify the checkout request belongs to the user
+    // Verify the checkout request exists (no auth required)
     const ticket = await prisma.ticket.findFirst({
       where: {
         mpesaCheckoutRequestId: checkoutRequestId,
-        userId: user.id,
       },
     })
 
@@ -34,7 +27,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Query M-Pesa for payment status
-    const statusResponse = await querySTKPushStatus({ checkoutRequestId })
+    let statusResponse
+    try {
+      statusResponse = await querySTKPushStatus({ checkoutRequestId })
+    } catch (mpesaError: any) {
+      console.error('❌ M-Pesa Status Query Error:', mpesaError.message)
+      // For rate limiting (429), return pending status instead of error
+      if (mpesaError.message.includes('rate limit')) {
+        return NextResponse.json({
+          status: 'pending',
+          resultCode: -1,
+          resultDesc: 'Rate limit exceeded. Please wait a moment.',
+          error: mpesaError.message,
+        })
+      }
+      // For other errors, return error response
+      return NextResponse.json(
+        { 
+          error: mpesaError.message || 'Failed to check M-Pesa payment status',
+          status: 'error',
+        },
+        { status: 500 }
+      )
+    }
 
     // If payment is successful, update tickets
     if (statusResponse.ResultCode === 0 && statusResponse.ResultDesc === 'The service request is processed successfully.') {

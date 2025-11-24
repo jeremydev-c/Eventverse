@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
 import { initiateSTKPush } from '@/lib/mpesa'
 import { z } from 'zod'
 
@@ -11,19 +10,13 @@ const mpesaCheckoutSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { ticketIds, phoneNumber } = mpesaCheckoutSchema.parse(body)
 
-    // Verify tickets belong to user and are pending
+    // Verify tickets exist and are pending (no auth required)
     const tickets = await prisma.ticket.findMany({
       where: {
         id: { in: ticketIds },
-        userId: user.id,
         status: 'PENDING',
       },
       include: {
@@ -73,8 +66,8 @@ export async function POST(request: NextRequest) {
     // Round to whole shillings (M-Pesa doesn't accept decimals)
     const amount = Math.ceil(amountInKES)
 
-    // Generate account reference (use event ID and user ID)
-    const accountReference = `EVT${eventId.slice(-8)}${user.id.slice(-6)}`
+    // Generate account reference (use event ID and ticket IDs)
+    const accountReference = `EVT${eventId.slice(-8)}${ticketIds[0].slice(-6)}`
 
     // Get callback URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -90,13 +83,25 @@ export async function POST(request: NextRequest) {
       callbackUrl,
     })
 
-    const stkResponse = await initiateSTKPush({
-      amount,
-      phoneNumber,
-      accountReference,
-      transactionDesc: `${event.title} - ${tickets.length} ticket(s)`,
-      callbackUrl,
-    })
+    let stkResponse
+    try {
+      stkResponse = await initiateSTKPush({
+        amount,
+        phoneNumber,
+        accountReference,
+        transactionDesc: `${event.title} - ${tickets.length} ticket(s)`,
+        callbackUrl,
+      })
+    } catch (mpesaError: any) {
+      console.error('❌ M-Pesa STK Push Error:', mpesaError.message)
+      return NextResponse.json(
+        { 
+          error: mpesaError.message || 'Failed to initiate M-Pesa payment',
+          details: 'Please check your M-Pesa API credentials and try again.',
+        },
+        { status: 500 }
+      )
+    }
 
     console.log('📱 M-Pesa STK Push Response:', {
       ResponseCode: stkResponse.ResponseCode,

@@ -62,6 +62,27 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Emit real-time ticket count update (BEAST LEVEL: Real-time updates)
+      if (tickets.length > 0) {
+        try {
+          const eventId = tickets[0].event.id
+          const { getSocketIO } = await import('@/lib/socket')
+          const socketIO = getSocketIO()
+          if (socketIO) {
+            const confirmedCount = await prisma.ticket.count({
+              where: {
+                eventId,
+                status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+              },
+            })
+            const { emitTicketCountUpdate } = await import('@/lib/socket')
+            emitTicketCountUpdate(eventId, confirmedCount)
+          }
+        } catch (socketError) {
+          console.warn('Socket.IO update failed:', socketError)
+        }
+      }
+
       console.log(`✅ M-Pesa payment confirmed for ${tickets.length} ticket(s)`, {
         receiptNumber: mpesaReceiptNumber,
         amount,

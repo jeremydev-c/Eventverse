@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import { Calendar, MapPin, DollarSign, Users, Ticket, ArrowLeft, CreditCard, Sma
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { useTicketCountUpdates } from '@/lib/socket-client'
 
 interface Event {
   id: string
@@ -42,19 +43,35 @@ export default function EventDetailPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [mpesaProcessing, setMpesaProcessing] = useState(false)
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null)
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    fetchEvent()
-    // Auto-refresh event data to update ticket count
-    const interval = setInterval(() => {
-      fetchEvent()
-    }, 10000) // Refresh every 10 seconds
-    return () => clearInterval(interval)
-  }, [eventId])
+  // Real-time ticket count updates via WebSocket (BEAST LEVEL: Real-time)
+  const handleTicketCountUpdate = useCallback((newCount: number) => {
+    if (event) {
+      setEvent({
+        ...event,
+        _count: {
+          tickets: newCount,
+        },
+      })
+      // Show subtle notification (only if count changed significantly)
+      const currentCount = event._count.tickets
+      if (Math.abs(newCount - currentCount) > 0) {
+        toast.success(`🎫 ${newCount} tickets sold`, { 
+          duration: 2000,
+          icon: '📊',
+        })
+      }
+    }
+  }, [event])
 
-  const fetchEvent = async () => {
+  useTicketCountUpdates(eventId, handleTicketCountUpdate)
+
+  const fetchEvent = useCallback(async () => {
     try {
-      const res = await fetch(`/api/events/${eventId}`)
+      const res = await fetch(`/api/events/${eventId}`, {
+        next: { revalidate: 10 } // Cache for 10 seconds
+      })
       const data = await res.json()
       if (res.ok) {
         setEvent(data.event)
@@ -67,7 +84,25 @@ export default function EventDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
+
+  useEffect(() => {
+    fetchEvent()
+    // Auto-refresh event data to update ticket count
+    const interval = setInterval(() => {
+      fetchEvent()
+    }, 10000) // Refresh every 10 seconds
+    return () => clearInterval(interval)
+  }, [fetchEvent])
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleBookTickets = async () => {
     if (quantity < 1) {
@@ -97,6 +132,11 @@ export default function EventDetailPage() {
 
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create tickets')
+      }
+
+      // Store userId in localStorage for later ticket fetching
+      if (data.userId) {
+        localStorage.setItem('eventverse_userId', data.userId)
       }
 
       const ticketIds = data.tickets.map((t: { id: string }) => t.id)
@@ -162,13 +202,24 @@ export default function EventDetailPage() {
     }
   }
 
+  const stopMpesaPolling = () => {
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current)
+      pollingTimeoutRef.current = null
+    }
+    setMpesaProcessing(false)
+    setCheckoutRequestId(null)
+    toast.info('Payment cancelled. You can try again.')
+  }
+
   const pollMpesaStatus = async (requestId: string) => {
     const maxAttempts = 30 // Poll for up to 5 minutes (30 * 10 seconds)
     let attempts = 0
+    let backoffDelay = 10000 // Start with 10 seconds
 
     const poll = async () => {
       if (attempts >= maxAttempts) {
-        setMpesaProcessing(false)
+        stopMpesaPolling()
         toast.error('Payment timeout. Please check your M-Pesa and try again.')
         return
       }
@@ -182,20 +233,49 @@ export default function EventDetailPage() {
 
         const data = await res.json()
 
+        if (res.status === 500 && data.error) {
+          // Handle API errors (rate limiting, etc.)
+          if (data.error.includes('rate limit')) {
+            // Exponential backoff for rate limiting
+            backoffDelay = Math.min(backoffDelay * 1.5, 60000) // Max 60 seconds
+            attempts++
+            pollingTimeoutRef.current = setTimeout(poll, backoffDelay)
+            console.log(`Rate limited, backing off to ${backoffDelay}ms`)
+            return
+          } else {
+            // Other API errors
+            stopMpesaPolling()
+            toast.error(data.error || 'Failed to check payment status')
+            return
+          }
+        }
+
         if (data.status === 'success') {
-          setMpesaProcessing(false)
+          stopMpesaPolling()
           toast.success('Payment confirmed! Redirecting to your tickets...')
           setTimeout(() => {
             router.push('/dashboard/attendee')
           }, 2000)
+        } else if (data.resultCode && data.resultCode !== 0) {
+          // Payment cancelled or failed
+          stopMpesaPolling()
+          if (data.resultCode === 1032) {
+            toast.error('Payment cancelled. Please try again if you want to complete the booking.')
+          } else {
+            toast.error(`Payment failed: ${data.resultDesc || 'Unknown error'}`)
+          }
         } else {
+          // Still pending, continue polling (reset backoff)
+          backoffDelay = 10000
           attempts++
-          setTimeout(poll, 10000) // Poll every 10 seconds
+          pollingTimeoutRef.current = setTimeout(poll, backoffDelay)
         }
       } catch (error) {
         console.error('Error polling M-Pesa status:', error)
+        // Exponential backoff on network errors
+        backoffDelay = Math.min(backoffDelay * 1.5, 60000)
         attempts++
-        setTimeout(poll, 10000)
+        pollingTimeoutRef.current = setTimeout(poll, backoffDelay)
       }
     }
 
@@ -285,7 +365,10 @@ export default function EventDetailPage() {
 
                 <div className="flex items-center gap-3 text-gray-700">
                   <Users className="w-5 h-5 text-primary-600" />
-                  <span>{event._count.tickets} tickets sold</span>
+                  <span className="flex items-center gap-2">
+                    <span>{event._count.tickets} tickets sold</span>
+                    <span className="text-xs text-green-500 animate-pulse">● Live</span>
+                  </span>
                 </div>
 
                 <div className="pt-4 border-t">
@@ -404,16 +487,24 @@ export default function EventDetailPage() {
               {/* M-Pesa Processing Status */}
               {mpesaProcessing && (
                 <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                    <div>
-                      <p className="text-sm font-semibold text-blue-900">
-                        Waiting for payment...
-                      </p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        Please complete the payment on your phone
-                      </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">
+                          Waiting for payment...
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Please complete the payment on your phone
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      onClick={stopMpesaPolling}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}

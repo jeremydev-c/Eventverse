@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -47,15 +47,15 @@ export default function OrganizerDashboard() {
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const [eventsRes, statsRes] = await Promise.all([
-        fetch('/api/events?organizerId=me'),
-        fetch('/api/dashboard/stats'),
+        fetch('/api/events?organizerId=me', {
+          next: { revalidate: 60 } // Cache for 60 seconds
+        }),
+        fetch('/api/dashboard/stats', {
+          next: { revalidate: 60 } // Cache for 60 seconds
+        }),
       ])
 
       if (eventsRes.ok) {
@@ -73,7 +73,11 @@ export default function OrganizerDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [fetchDashboardData])
 
   if (loading) {
     return (
@@ -170,37 +174,7 @@ export default function OrganizerDashboard() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event, index) => (
-              <div key={event.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                <Card variant="elevated" className="hover:shadow-glow transition-all duration-300 cursor-pointer hover-lift">
-                  <Link href={`/events/${event.id}/manage`}>
-                  <div>
-                    <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">{event.title}</h3>
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-primary-500" />
-                        <span className="font-medium">{format(new Date(event.date), 'MMM dd, yyyy • h:mm a')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary-500" />
-                        <span className="font-medium">{event.venue}</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                      <div>
-                        <div className="text-xs text-gray-500 font-medium mb-1">Tickets Sold</div>
-                        <div className="font-bold text-lg text-gray-900">{event._count.tickets}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-gray-500 font-medium mb-1">Revenue</div>
-                        <div className="font-bold text-lg gradient-text">
-                          ${(event._count.tickets * event.basePrice).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </Card>
-              </div>
+              <OrganizerEventCard key={event.id} event={event} index={index} />
             ))}
           </div>
 
@@ -242,4 +216,46 @@ export default function OrganizerDashboard() {
     </div>
   )
 }
+
+// Memoized Event Card Component for Performance
+const OrganizerEventCard = memo(({ event, index }: { event: Event; index: number }) => {
+  const formattedDate = useMemo(() => format(new Date(event.date), 'MMM dd, yyyy • h:mm a'), [event.date])
+  const revenue = useMemo(() => (event._count.tickets * event.basePrice).toFixed(2), [event._count.tickets, event.basePrice])
+
+  return (
+    <div className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+      <Card variant="elevated" className="hover:shadow-glow transition-all duration-300 cursor-pointer hover-lift">
+        <Link href={`/events/${event.id}/manage`}>
+          <div>
+            <h3 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">{event.title}</h3>
+            <div className="space-y-2 text-sm text-gray-600 mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary-500" />
+                <span className="font-medium">{formattedDate}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary-500" />
+                <span className="font-medium">{event.venue}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+              <div>
+                <div className="text-xs text-gray-500 font-medium mb-1">Tickets Sold</div>
+                <div className="font-bold text-lg text-gray-900">{event._count.tickets}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 font-medium mb-1">Revenue</div>
+                <div className="font-bold text-lg gradient-text">
+                  ${revenue}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </Card>
+    </div>
+  )
+})
+
+OrganizerEventCard.displayName = 'OrganizerEventCard'
 

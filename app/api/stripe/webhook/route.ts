@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch tickets by session ID (ticketIds are no longer in metadata due to 500 char limit)
     // All tickets with this session ID belong to this checkout
-    await prisma.ticket.updateMany({
+    const updatedTickets = await prisma.ticket.updateMany({
       where: {
         stripeSessionId: session.id,
         status: 'PENDING',
@@ -58,6 +58,34 @@ export async function POST(request: NextRequest) {
         stripePaymentId: session.payment_intent,
       },
     })
+
+    // Emit real-time ticket count update (BEAST LEVEL: Real-time updates)
+    if (updatedTickets.count > 0) {
+      try {
+        // Get eventId from first updated ticket
+        const firstTicket = await prisma.ticket.findFirst({
+          where: { stripeSessionId: session.id },
+          select: { eventId: true },
+        })
+
+        if (firstTicket) {
+          const { getSocketIO } = await import('@/lib/socket')
+          const socketIO = getSocketIO()
+          if (socketIO) {
+            const confirmedCount = await prisma.ticket.count({
+              where: {
+                eventId: firstTicket.eventId,
+                status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+              },
+            })
+            const { emitTicketCountUpdate } = await import('@/lib/socket')
+            emitTicketCountUpdate(firstTicket.eventId, confirmedCount)
+          }
+        }
+      } catch (socketError) {
+        console.warn('Socket.IO update failed:', socketError)
+      }
+    }
 
   }
 

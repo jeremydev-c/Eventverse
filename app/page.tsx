@@ -21,16 +21,16 @@ export default function HomePage() {
         </div>
         <div className="flex gap-4">
           <Link
-            href="/select-role?next=login"
+            href="/events"
             className="px-5 py-2.5 text-white/90 hover:text-white font-medium rounded-xl hover:bg-white/10 backdrop-blur-sm transition-all duration-300"
           >
-            Login
+            Browse Events
           </Link>
           <Link
-            href="/select-role?next=register"
+            href="/events/create"
             className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 hover:from-primary-600 hover:to-primary-700 transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            Get Started
+            Create Event
           </Link>
         </div>
       </nav>
@@ -57,7 +57,7 @@ export default function HomePage() {
               Explore Events
             </Link>
             <Link
-              href="/select-role?next=register"
+              href="/events/create"
               className="px-10 py-5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-bold text-lg shadow-xl shadow-primary-500/40 hover:shadow-glow-xl hover:from-primary-600 hover:to-primary-700 hover:scale-110 transition-all duration-500 w-full sm:w-auto shine card-hover"
             >
               Create Event

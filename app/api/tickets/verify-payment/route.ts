@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
 
-// Force dynamic rendering - this route uses cookies and searchParams
+// Force dynamic rendering - this route uses searchParams
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
@@ -10,11 +9,6 @@ export async function GET(request: NextRequest) {
   // Lazy import to avoid build-time evaluation
   const { stripe } = await import('@/lib/stripe')
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const searchParams = request.nextUrl.searchParams
     const sessionId = searchParams.get('sessionId')
 
@@ -25,11 +19,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check if ticket exists and belongs to user
+    // Check if ticket exists (no auth, verify by sessionId only)
     const ticket = await prisma.ticket.findFirst({
       where: {
         stripeSessionId: sessionId,
-        userId: user.id,
       },
     })
 

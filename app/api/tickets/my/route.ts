@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuth } from '@/lib/auth'
 
-// Force dynamic rendering - this route uses cookies for auth
+// Force dynamic rendering
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth()
+    const searchParams = request.nextUrl.searchParams
+    const userId = searchParams.get('userId')
+
+    // If no userId provided, return empty (no auth means we need userId param)
+    if (!userId) {
+      return NextResponse.json({ tickets: [] })
+    }
 
     const tickets = await prisma.ticket.findMany({
-      where: { userId: user.id },
+      where: { userId: userId },
       select: {
         id: true,
         status: true,

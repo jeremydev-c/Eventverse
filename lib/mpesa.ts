@@ -25,7 +25,17 @@ function buildPassword(timestamp: string) {
   return Buffer.from(dataToEncode).toString('base64')
 }
 
+// Cache access token to reduce API calls
+let cachedAccessToken: string | null = null
+let tokenExpiryTime: number = 0
+const TOKEN_CACHE_DURATION = 55 * 60 * 1000 // 55 minutes (tokens expire in 1 hour)
+
 async function getAccessToken(): Promise<string> {
+  // Return cached token if still valid
+  if (cachedAccessToken && Date.now() < tokenExpiryTime) {
+    return cachedAccessToken
+  }
+
   const consumerKey = assertEnvVar(MPESA_CONSUMER_KEY, 'MPESA_CONSUMER_KEY')
   const consumerSecret = assertEnvVar(
     MPESA_CONSUMER_SECRET,
@@ -45,13 +55,33 @@ async function getAccessToken(): Promise<string> {
     timeout: 15000,
   }
 
-  const response = await axios.request<{ access_token: string }>(config)
+  try {
+    const response = await axios.request<{ access_token: string; expires_in?: number }>(config)
 
-  if (!response.data?.access_token) {
-    throw new Error('Failed to obtain M-Pesa access token')
+    if (!response.data?.access_token) {
+      throw new Error('Failed to obtain M-Pesa access token')
+    }
+
+    // Cache the token
+    cachedAccessToken = response.data.access_token
+    const expiresIn = (response.data.expires_in || 3600) * 1000 // Default to 1 hour
+    tokenExpiryTime = Date.now() + expiresIn - 5 * 60 * 1000 // Refresh 5 minutes before expiry
+
+    return cachedAccessToken
+  } catch (error: any) {
+    // Clear cache on error
+    cachedAccessToken = null
+    tokenExpiryTime = 0
+
+    if (error.response) {
+      const status = error.response.status
+      if (status === 401 || status === 403) {
+        throw new Error('Invalid M-Pesa API credentials. Please check your MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET.')
+      }
+      throw new Error(`Failed to obtain M-Pesa access token: ${error.response.data?.error || error.message}`)
+    }
+    throw error
   }
-
-  return response.data.access_token
 }
 
 type InitiateSTKPushParams = {
@@ -99,19 +129,44 @@ export async function initiateSTKPush({
     TransactionDesc: transactionDesc.substring(0, 20) || 'Event Ticket',
   }
 
-  const response = await axios.post(
-    `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
-    payload,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 20000,
-    }
-  )
+  try {
+    const response = await axios.post(
+      `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 20000,
+      }
+    )
 
-  return response.data
+    return response.data
+  } catch (error: any) {
+    if (error.response) {
+      // M-Pesa API returned an error response
+      const status = error.response.status
+      const data = error.response.data
+
+      if (status === 429) {
+        throw new Error('M-Pesa API rate limit exceeded. Please wait a moment and try again.')
+      } else if (status === 403) {
+        throw new Error('M-Pesa API access forbidden. Please check your API credentials.')
+      } else if (status === 500) {
+        throw new Error('M-Pesa API server error. Please try again later.')
+      } else {
+        const errorMessage = data?.errorMessage || data?.error_description || data?.message || `M-Pesa API error (${status})`
+        throw new Error(errorMessage)
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('M-Pesa API request timeout. Please check your internet connection and try again.')
+    } else {
+      // Error setting up the request
+      throw new Error(`M-Pesa request error: ${error.message}`)
+    }
+  }
 }
 
 type QuerySTKStatusParams = {
@@ -138,19 +193,44 @@ export async function querySTKPushStatus({
     CheckoutRequestID: checkoutRequestId,
   }
 
-  const response = await axios.post(
-    `${MPESA_BASE_URL}/mpesa/stkpushquery/v1/query`,
-    payload,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 15000,
-    }
-  )
+  try {
+    const response = await axios.post(
+      `${MPESA_BASE_URL}/mpesa/stkpushquery/v1/query`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    )
 
-  return response.data
+    return response.data
+  } catch (error: any) {
+    if (error.response) {
+      // M-Pesa API returned an error response
+      const status = error.response.status
+      const data = error.response.data
+
+      if (status === 429) {
+        throw new Error('M-Pesa API rate limit exceeded. Please wait a moment before checking status again.')
+      } else if (status === 403) {
+        throw new Error('M-Pesa API access forbidden. Please check your API credentials.')
+      } else if (status === 500) {
+        throw new Error('M-Pesa API server error. Please try again later.')
+      } else {
+        const errorMessage = data?.errorMessage || data?.error_description || data?.message || `M-Pesa API error (${status})`
+        throw new Error(errorMessage)
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('M-Pesa API request timeout. Please check your internet connection and try again.')
+    } else {
+      // Error setting up the request
+      throw new Error(`M-Pesa request error: ${error.message}`)
+    }
+  }
 }
 
 export type MpesaCallbackResult = {
