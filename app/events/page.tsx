@@ -223,7 +223,7 @@ const EventCard = memo(({ event, index }: { event: Event; index: number }) => {
   return (
     <div className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, height: '100%' }}>
       <Link href={`/events/${event.id}`}>
-        <Card variant="elevated" className="hover:shadow-glow-xl transition-all duration-700 cursor-pointer h-full hover-lift group shine premium-border" style={{ height: '100%' }}>
+        <Card variant="elevated" className="hover:shadow-glow-xl transition-all duration-700 cursor-pointer h-full hover-lift group shine premium-border">
           {event.imageUrl && (
             <div className="relative overflow-hidden rounded-xl mb-4 -mx-6 -mt-6">
               <img
